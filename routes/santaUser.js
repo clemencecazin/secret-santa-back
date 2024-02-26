@@ -3,32 +3,49 @@ const router = express.Router();
 const SantaUser = require("../models/SantaUser");
 const isAuthenticated = require("../middleware/isAuthenticated");
 
-router.post("/add/santaUser", isAuthenticated, async (req, res) => {
+router.get("/usersList", isAuthenticated, async (req, res) => {
     try {
-        const { firstName, email } = req.fields;
-        const user = await SantaUser.findOne({ email });
+        const usersList = await SantaUser.find();
 
-        if (!user) {
-            if (email && firstName) {
+        res.json(usersList);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.put("/add/santaUser", isAuthenticated, async (req, res) => {
+    try {
+        console.log(req.fields);
+        const users = req.fields.usersList;
+        let updatedUsers = [];
+
+        for (const user of users) {
+            if (!user._id) {
                 const newUser = new SantaUser({
-                    firstName,
-                    email,
+                    firstName: user.firstName,
+                    email: user.email,
                 });
 
                 await newUser.save();
 
-                res.status(200).json({
-                    _id: newUser._id,
-                });
+                updatedUsers = [...updatedUsers, newUser];
             } else {
-                res.status(400).json({ message: "Missing parameters" });
+                const existingUser = await SantaUser.findById(user._id);
+
+                if (
+                    existingUser.email !== user.email ||
+                    existingUser.firstName !== user.firstName
+                ) {
+                    existingUser.firstName = user.firstName;
+                    existingUser.email = user.email;
+                    await existingUser.save();
+
+                    updatedUsers = [...updatedUsers, existingUser];
+                }
             }
-        } else {
-            // If user exist error message
-            res.status(400).json({
-                message: "This email already has an account",
-            });
         }
+
+        return res.status(200).json(updatedUsers);
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
