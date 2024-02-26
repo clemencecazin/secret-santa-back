@@ -15,11 +15,23 @@ router.get("/usersList", isAuthenticated, async (req, res) => {
 
 router.put("/add/santaUser", isAuthenticated, async (req, res) => {
     try {
-        console.log(req.fields);
         const users = req.fields.usersList;
+        const list = await SantaUser.find();
+
         let updatedUsers = [];
 
         for (const user of users) {
+            const usersToDelete = list.filter(
+                (user) =>
+                    !users.find((u) => u._id.toString() === user._id.toString())
+            );
+
+            if (usersToDelete) {
+                for (const { _id } of usersToDelete) {
+                    await SantaUser.findByIdAndDelete(_id);
+                }
+            }
+
             if (!user._id) {
                 const newUser = new SantaUser({
                     firstName: user.firstName,
